@@ -45,12 +45,12 @@ class Partitioner:
     Use metis with vertex and edge weight
     """
 
-    def __init__(self,metis="gpmetis -ptype=rb"):
+    def __init__(self, metis="gpmetis -ptype=rb"):
         self.logger = logging.getLogger(__name__)
         # self.logger.setLevel(logging.DEBUG)
         self.metisCMD = metis
 
-    def loadtopo(self,topo, alg="metis"):
+    def loadtopo(self, topo, alg="metis"):
         i=1
         self.pos={}
         self.switches={}
@@ -107,8 +107,7 @@ class Partitioner:
         return r
 
     def partition(self,n,shares=None):
-        self.tunnels=[]
-        self.partitions=[]
+
         if(n>1 and len(self.switches)>1):
             if(shares):
                 tpw=""

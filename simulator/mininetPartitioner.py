@@ -216,7 +216,7 @@ class Partitioner:
             'mn-switchBin':SwitchBinPlacer, 'mn-hostSwitchBin':HostSwitchBinPlacer}
 
     def loadtopo(self, topo):
-        i=1
+        i = 1
         self.pos = {}
         self.switches = {}
         self.hostToSw = {}
@@ -226,19 +226,19 @@ class Partitioner:
         self.tunnels = []
         self.partitions = []
         self.topo = topo
-#        self.placer = self.placers[alg]
         graphFile = [[]] # <-- index 0 is header
 
+        # Never used
         for link in self.topo.links():
             if self.topo.isSwitch(link[0]) and not self.topo.isSwitch(link[1]):
                 self.swToHost.setdefault(link[0], []).append(link[1])
             if self.topo.isSwitch(link[1]) and not self.topo.isSwitch(link[0]):
                 self.swToHost.setdefault(link[1], []).append(link[0])
 
-    def partition(self, n, alg='random', shares=None):
+    def partition(self, n, alg='mn-random', shares=None):
 
         self.alg = alg
-	self.placer = self.placers[self.alg](servers=[x for x in range(4)], nodes=self.topo.nodes(), 
+        self.placer = self.placers[self.alg](servers=[x for x in range(4)], nodes=self.topo.nodes(), 
 		hosts=self.topo.hosts(), switches=self.topo.switches(), links=self.topo.links())
         # Create subtopologies
         for i in range(0, n):

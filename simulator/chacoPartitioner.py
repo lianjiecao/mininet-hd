@@ -45,7 +45,7 @@ class Partitioner:
     Use metis with vertex and edge weight
     """
 
-    def __init__(self,tool="~/Chaco-2.2/exec/chaco"):
+    def __init__(self, tool = "~/Chaco-2.2/exec/chaco"):
         self.logger = logging.getLogger(__name__)
         # self.logger.setLevel(logging.DEBUG)
         self.chacoCtlPara = "OUTPUT_ASSIGN = TRUE\nOUTPUT_METRICS = -1\nPROMPT = FALSE\n"
@@ -114,7 +114,7 @@ class Partitioner:
             r.addLink(edge[0],edge[1],**topo.linkInfo(edge[0],edge[1]))
         return r
 
-    def partition(self,n, alg="chaco", shares=None):
+    def partition(self, n, alg="chaco", shares=None):
         self.tunnels=[]
         self.partitions=[]
         # Write Chaco input parameters

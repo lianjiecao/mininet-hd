@@ -82,7 +82,7 @@ from mininet.topolib import TreeTopo
 from mininet.util import quietRun, errRun
 from mininet.examples.clustercli import CLI
 from mininet.log import setLogLevel, debug, info, error
-from mininet.clean import addCleanupCallback
+#from mininet.clean import addCleanupCallback
 
 from signal import signal, SIGINT, SIG_IGN
 from subprocess import Popen, PIPE, STDOUT
@@ -116,7 +116,8 @@ class ClusterCleanup( object ):
     def add( cls, server, user='' ):
         "Add an entry to server: user dict"
         if not cls.inited:
-            addCleanupCallback( cls.cleanup )
+#            addCleanupCallback( cls.cleanup )
+            pass
         if not user:
             user = findUser()
         cls.serveruser[ server ] = user

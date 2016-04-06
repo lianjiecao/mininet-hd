@@ -1,13 +1,13 @@
 import simulatorFunc
-from metisPartitioner1 import Partitioner as metisPartitioner1
-from metisPartitioner2 import Partitioner as metisPartitioner2
-from metisPartitioner3 import Partitioner as metisPartitioner3
-from metisPartitioner4 import Partitioner as metisPartitioner4
-from chacoPartitioner  import Partitioner as chacoPartitioner
-from kahipPartitioner  import Partitioner as kahipPartitioner
-from esPartitioner     import Partitioner as esPartitioner
-from mininetPartitioner import Partitioner as mnPartitioner
-
+#from metisPartitioner1 import Partitioner as metisPartitioner1
+#from metisPartitioner2 import Partitioner as metisPartitioner2
+#from metisPartitioner3 import Partitioner as metisPartitioner3
+#from metisPartitioner4 import Partitioner as metisPartitioner4
+#from chacoPartitioner  import Partitioner as chacoPartitioner
+#from kahipPartitioner  import Partitioner as kahipPartitioner
+#from esPartitioner     import Partitioner as esPartitioner
+#from mininetPartitioner import Partitioner as mnPartitioner
+from partitioner import MetisPartitioner, ChacoPartitioner, MininetPartitioner
 from GPGA              import Partitioner as genPartitioner
 from topoSet           import TopoSet
 import time
@@ -39,19 +39,19 @@ partitioners = {
 #    "metisNoWeight":metisPartitioner1, 
 #    "metisEdgeWeight":metisPartitioner2, 
 #    "metisVertWeight":metisPartitioner3, 
-#    'metisEdgeVertWeight':metisPartitioner4,
-    'chaco':chacoPartitioner,
+    'metis':MetisPartitioner,
+    'chaco':ChacoPartitioner,
 #    'kahip':kahipPartitioner,
-    'mn-random':mnPartitioner,
-    'mn-roundRobin':mnPartitioner,
-    'mn-switchBin':mnPartitioner,
+#    'mn-random':mnPartitioner,
+    'mn-roundRobin':MininetPartitioner,
+#    'mn-switchBin':mnPartitioner,
 #    'mn-hostSwitchBin':mnPartitioner,
 #    "easyScale":esPartitioner,
     # "Genetic":genPartitioner
     } #"metisEdgeVertWeight":metisPartitioner4,, "Genetic":genPartitioner, , "easyScale":esPartitioner
 
 
-for tType in ['fattree', 'jellyfish', 'clos' ,'rocketfuel']:  # 'threetier' 'fattree', 'jellyfish', 'clos' , 'rocketfuel'
+for tType in ['rocketfuel', 'fattree', 'jellyfish', 'clos']:  # 'threetier' 'fattree', 'jellyfish', 'clos' , 'rocketfuel'
     print "\n++++++++++", tType, "topology ++++++++++"
     for topo in origTopologies[tType]:
         # topo = origTopologies[t]
@@ -72,8 +72,8 @@ for tType in ['fattree', 'jellyfish', 'clos' ,'rocketfuel']:  # 'threetier' 'fat
 
         for p in partitioners:
 #            start = time.time()
-            parti = partitioners[p]()
-            parti.loadtopo(topo)
+            parti = partitioners[p](topo)
+#            parti.loadtopo(topo)
             # print "Switches:", topo.switches()
             if p is 'Genetic':
                 subTopo = parti.partition(len(geneCap), geneCap)

@@ -170,19 +170,20 @@ class RocketFuel(Topo):
         for e in entries:
             tokens = e.split()
             sw_idx = str(i)
-            sw_map[tokens[0]] = sw_idx
-            self.addSwitch(sw_idx)
-            i = i + 1
+            sw_name = 's' + sw_idx
+            sw_map[tokens[0]] = sw_name
+            self.addSwitch(sw_name)
             # Add host to non-backbone switches
             if tokens[1] == 'nbb':
                 h_name = 'h' + sw_idx
                 self.addHost(h_name)
-                self.addLink(sw_idx, h_name, bw=10, delay='1ms')
+                self.addLink(sw_name, h_name, bw=10, delay='1ms')
             if len(tokens) > 2:
-                sws[sw_idx] = {'bb':tokens[1], 'nb':tokens[2:]}
+                # bb = backbone, nb = neighbor
+                sws[sw_name] = {'bb':tokens[1], 'nb':tokens[2:]}
             else:
-                sws[sw_idx] = {'bb':tokens[1], 'nb':''}
-
+                sws[sw_name] = {'bb':tokens[1], 'nb':''}
+            i += 1
         # Add links
         l = []
         for sw in sws:

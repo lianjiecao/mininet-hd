@@ -1,13 +1,15 @@
 import subprocess, os, logging, time
 from mininet.log import setLogLevel, debug, info, error
 from mininet.topo import Topo, LinearTopo
-from random import randrange
 from cluster import Placer, RoundRobinPlacer, RandomPlacer, SwitchBinPlacer, HostSwitchBinPlacer
 # the following block is to support deprecation warnings. this is really not
 # solved nicely and should probably be somewhere else
-import warnings
+import warnings, sys
 import functools
+from math import ceil, log
+from random import randrange
 
+import simulatorFunc
 #logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 logging.basicConfig()
@@ -58,15 +60,19 @@ class Partitioner:
             # For sw-sw links, store info in the format of [swName swWeight neighborSw_i edgeWeigth_i]
             # For host-sw links, store info for recovering subtopologies after partitioning
             if (topo.isSwitch(link[0]) and topo.isSwitch(link[1])): # Links between 2 switches
+                # Add neighbors
                 self.graphFile[self.switches[link[0]]] += [self.switches[link[1]],int(topo.linkInfo(link[0],link[1])["bw"])]
                 self.graphFile[self.switches[link[1]]] += [self.switches[link[0]],int(topo.linkInfo(link[0],link[1])["bw"])]
+                # Update vertex weight
                 self.graphFile[self.switches[link[0]]][1] += int(topo.linkInfo(link[0],link[1])["bw"])
                 self.graphFile[self.switches[link[1]]][1] += int(topo.linkInfo(link[0],link[1])["bw"])
                 self.swLinks += 1
             elif topo.isSwitch(link[0]):
+                self.graphFile[self.switches[link[0]]][1] += int(topo.linkInfo(link[0],link[1])["bw"])
                 self.hostToSw[link[1]] = link[0]
                 # self.swToHost.setdefault(link[0], []).append(link[1])
             elif topo.isSwitch(link[1]):
+                self.graphFile[self.switches[link[1]]][1] += int(topo.linkInfo(link[0],link[1])["bw"])
                 self.hostToSw[link[0]] = link[1]
                 # self.swToHost.setdefault(link[1], []).append(link[0])
 
@@ -91,14 +97,17 @@ class MetisPartitioner(Partitioner):
         # Create input file for METIS, removing the first swName
         self.graphFile = [x[1:] for x in self.graphFile]
         self.graphFile[0] = [len(self.switches), self.swLinks, "011 0"]
-
-        self.graph = self._write_to_file()
+        pstr = ""
+        for line in self.graphFile:
+            pstr = pstr + " ".join(map(str, line)) + "\n"
+        self.graph = self._write_to_file(pstr)
 
         if n > 1 and len(self.switches) > 1:
-            if(shares):
+            if shares:
+                metisShares = simulatorFunc.calcMetisShare(self.topo, shares)
                 tpw=""
                 for i in range(0, n):
-                    tpw += str(i) + " = " + str(shares[i]) + "\n"
+                    tpw += str(i) + " = " + str(metisShares[i]) + "\n"
                 tpwf = self._write_to_file(tpw)
                 outp = subprocess.check_output([self.toolCMD + " -tpwgts=" + tpwf + " " + self.graph + " " + str(n)], shell=True)
                 os.remove(tpwf)
@@ -119,13 +128,13 @@ class MetisPartitioner(Partitioner):
         return Cluster(self.partitions,self.tunnels)
 
 
-    def _write_to_file(self):
+    def _write_to_file(self, pstr):
         """
         Dump the graph to a file for graph partition tools
         """
-        pstr = ""
-        for line in self.graphFile:
-            pstr = pstr + " ".join(map(str, line)) + "\n"
+        # pstr = ""
+        # for line in self.graphFile:
+        #     pstr = pstr + " ".join(map(str, line)) + "\n"
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -182,13 +191,16 @@ class ChacoPartitioner(MetisPartitioner):
     Chaco partitioner with multilevel KL
     """
 
-    def __init__(self, topo, tool=''): 
-        Partitioner.__init__( self, topo, tool='~/Chaco-2.2/exec/chaco')
+    def __init__(self, topo, tool='~/Chaco-2.2/exec/chaco'): 
+        Partitioner.__init__( self, topo, tool)
         self.chacoCtlPara = "OUTPUT_ASSIGN = TRUE\nOUTPUT_METRICS = -1\nPROMPT = FALSE\n"
 
     def partition(self, n, alg="chaco", shares=None):
         self.graphFile[0] = [len(self.switches), self.swLinks ,"111"]
-        self.graph = self._write_to_file()
+        pstr = ""
+        for line in self.graphFile:
+            pstr = pstr + " ".join(map(str, line)) + "\n"
+        self.graph = self._write_to_file(pstr)
 
         inputPara = self.toolCMD+'.in'
         subprocess.call('echo "'+self.graph+'\n'+self.graph+'.out\n1\n50\n2\n2\nn\n" > '+inputPara, shell=True)
@@ -203,6 +215,52 @@ class ChacoPartitioner(MetisPartitioner):
             self._parse_partition_result(self.graph+".out",n)
             #print "Chaco-reconstruct:", time.time()-startT
             os.remove(self.graph+".out")
+            os.remove(self.graph)
+        else:
+            self.partitions = [self.topo]
+            
+        return Cluster(self.partitions,self.tunnels)
+
+
+class ChacoUEPartitioner(MetisPartitioner):
+    """
+    Chaco partitioner with multilevel KL
+    """
+
+    def __init__(self, topo, tool='~/Chaco-2.2-siyuan/exec/chaco'): 
+        Partitioner.__init__( self, topo, tool)
+        self.chacoCtlPara = "OUTPUT_ASSIGN = TRUE\nOUTPUT_METRICS = -1\nPROMPT = FALSE\n"
+
+    def partition(self, n, alg="chacoUE", shares=None):
+
+        if shares is None:
+            self.logger.info('Shares are invalid!')
+            sys.exit(0)
+
+        self.graphFile[0] = [len(self.switches), self.swLinks ,"111"]
+        pstr = ""
+        for line in self.graphFile:
+            pstr = pstr + " ".join(map(str, line)) + "\n"
+        self.graph = self._write_to_file(pstr)
+
+        inputPara = self.toolCMD+'.in'
+        dim = int(ceil(log(n, 2)))
+        caps = '\n'.join(map(str, shares+[0]*(2**dim-n)))
+
+        subprocess.call('echo "'+self.graph+'\n'+self.graph+'.out\n1\n50\n'+str(dim)+'\n'+caps+'\n2\nn\n" > '
+            +inputPara, shell=True)
+        subprocess.call('echo "'+self.chacoCtlPara+'" > User_Params', shell=True)
+ 
+        if n > 1 and len(self.switches) > 1:
+            startT = time.time()
+            outp = subprocess.check_output(["cat "+inputPara+" | "+self.toolCMD], shell=True)
+            #print "Chaco-partition:", time.time()-startT
+            self.logger.debug(outp)
+            startT = time.time()
+            self._parse_partition_result(self.graph+".out",n)
+            #print "Chaco-reconstruct:", time.time()-startT
+            os.remove(self.graph+".out")
+#            print self.graph
             os.remove(self.graph)
         else:
             self.partitions = [self.topo]

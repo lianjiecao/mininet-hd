@@ -6,17 +6,18 @@ logging.basicConfig()
 logger = logging.getLogger("simuFunc")
 logger.setLevel(logging.INFO)
 
-def adjustCap(origTopo, capacities):
-    tWeight = origTopo #calcTopoWeight(origTopo)
-    logger.info("Original capacities: " + str(capacities))
-    if tWeight > sum(capacities):
-        logger.warning("Topology is too large! Experiment may lose fidelity!")
-        increase = float(tWeight)/sum(capacities)
-        newCap = [increase*x for x in capacities]
-        logger.info("Adjusted capacities: " + str(newCap))
-        return newCap
+def adjustCap(topoW, caps):
+
+    logger.debug("Original capacities: " + str(caps))
+    sumCaps = sum([x[1] for x in caps])
+    if topoW > sumCaps:
+        logger.debug("Topology is too large! Experiment may lose fidelity!")
+        ratio = float(topoW)/sumCaps
+        newCaps = [(x[0], int(ratio*x[1])) for x in caps]
+        logger.debug("Adjusted capacities: " + str(newCaps))
+        return newCaps
     else:
-        return capacities
+        return caps
 
 
 # def initShare(origTopo, capacities):
@@ -42,6 +43,12 @@ def adjustCap(origTopo, capacities):
 #     return shares
     # shares = []
 
+def calcMetisShare(topo, caps):
+    topoW = calcTopoWeight(topo)
+    subTopoW = caps[:-1]
+    subTopoW.append(topoW - sum(subTopoW))
+    shares = [float(x)/topoW for x in subTopoW]
+    return shares
 
 def calcTheoSol(origTopo, capacities):
 
@@ -64,6 +71,21 @@ def calcTheoSol(origTopo, capacities):
                 remWeight = 0
     logger.info("Theoretical solution: " + str(theoSol))
     return theoSol
+
+def selectPMs(topoW, caps):
+    # TopoW: total weight of the original topology
+    # caps: list of tuples ([pm, cap]) sorted by the values of the second element
+
+    remW = topoW
+    selectedPMs = []
+    for item in caps:
+        remW -= item[1]
+        selectedPMs.append(item)
+        if remW <= 0:
+            break
+
+    return selectedPMs
+
 
 
 def objectFunc(cap, theoSol, sol):
@@ -131,7 +153,7 @@ def calEdgeCut(origTopo, subTopos):
     # for l in origTopo.links():
     #     for st in subTopos
 
-def printRes(origTopo, cap, theoSol, subTopos):
+def printRes(origTopo, topoW, cap, subTopos):
 
     resMatrix = []
     resMatrix.append(["Partitioner", "Capacity", "Subtopo_Weights", "Objective_Func", "EdgeCuts"])
@@ -141,7 +163,9 @@ def printRes(origTopo, cap, theoSol, subTopos):
         [partiSol, cutW] = evalPart(origTopo, cap, subTopos[p])
         objFunc = 0 # objectFunc(cap, theoSol, partiSol)
 #        edgCut = calEdgeCut(origTopo, subTopos[p])
-        resMatrix.append([p, str(cap), str(sorted(partiSol.values(),reverse=True)), str(objFunc), str(sorted(cutW.values(),reverse=True))])
+        # with objective function
+        resMatrix.append([p, str(cap), str(sorted(partiSol.values(),reverse=True)), str(objFunc), 
+            str(sorted(cutW.values(),reverse=True))])
     # col_width = max(len(item) for row in resMatrix for item in row) + 1
     col_width = []
     for i in range(len(resMatrix[0])):
@@ -155,19 +179,18 @@ def printRes(origTopo, cap, theoSol, subTopos):
     # print resMatrix
 
 
-def printResSimple(origTopo, cap, theoSol, subTopos):
+def printSimpleRes(origTopo, topoW, cap, subTopos):
 
-    resMatrix = {}
-    # print "\tPartitioner |\tCapacity |\tSubtopo Weights |\tFraction |"
+    results = [[],[]]
     for p in sorted(subTopos.keys()):
-        partiSol = evalPart(origTopo, cap, subTopos[p])
-        objFunc = objectFunc(cap, theoSol, partiSol)
-        edgCut = calEdgeCut(origTopo, subTopos[p])
-        resMatrix[p] = int(objFunc)
-    # col_width = max(len(item) for row in resMatrix for item in row) + 1
-    print ' '.join(resMatrix.keys())
-    print ' '.join(map(str, resMatrix.values()))
-
+        [partiSol, cutW] = evalPart(origTopo, cap, subTopos[p])
+        subtopoW = sorted(partiSol.values(),reverse=True)
+#        print p, cap, subtopoW, cutW.values()
+        results[0].extend([p+'-V', p+'-E'])
+        results[1].extend([sum([abs(cap[i]-subtopoW[i]) for i in range(len(cap))])/sum(cap), sum(cutW.values())/topoW])
+#        print p, sum([abs(cap[i]-subtopoW[i]) for i in range(len(cap))])/sum(cap), sum(cutW.values())/topoW
+    print ' '.join(results[0])
+    print ' '.join(['%.6f' % x for x in results[1]])
 
 def calcTopoWeight(topo):
     links = topo.links(sort = True)
@@ -202,7 +225,7 @@ def checkTopo(topo):
     return weight
 
 def checkTopoSimple(topo):
-    print "===== Topology info ====="
+#    print "===== Topology info ====="
     numHost = len(topo.hosts())
     numSwitch = len(topo.switches())
     numLink = len(topo.links())
@@ -212,7 +235,7 @@ def checkTopoSimple(topo):
     #     if (topo.isSwitch(link[0]) and topo.isSwitch(link[1])) and topo.linkInfo(link[0], link[1]).has_key("bw"):
     #         weight = weight + topo.linkInfo(link[0], link[1])["bw"]
 
-    print "switch:", numSwitch, "host:", numHost, "link:", numLink, "weight", weight
+#    print "switch:", numSwitch, "host:", numHost, "link:", numLink, "weight", weight
 
     return weight
 

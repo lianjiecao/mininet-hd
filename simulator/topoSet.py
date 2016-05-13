@@ -176,8 +176,8 @@ class RocketFuel(Topo):
             # Add host to non-backbone switches
             if tokens[1] == 'nbb':
                 h_name = 'h' + sw_idx
-                self.addHost(h_name)
-                self.addLink(sw_name, h_name, bw=10, delay='1ms')
+#                self.addHost(h_name)
+#                self.addLink(sw_name, h_name, bw=10, delay='1ms')
             if len(tokens) > 2:
                 # bb = backbone, nb = neighbor
                 sws[sw_name] = {'bb':tokens[1], 'nb':tokens[2:]}
@@ -219,7 +219,9 @@ class TopoSet:
            624:'3356.r0.cch.abr',
            201:'3967.r0.cch.abr',
             11:'4755.r0.cch.abr',
-           631:'7018.r0.cch.abr'
+           631:'7018.r0.cch.abr',
+           100:'1755-100.r0.cch.abr',
+            36:'1755-36.r0.cch.abr',
         }
 
 

@@ -187,7 +187,8 @@ def printSimpleRes(origTopo, topoW, cap, subTopos):
         subtopoW = sorted(partiSol.values(),reverse=True)
 #        print p, cap, subtopoW, cutW.values()
         results[0].extend([p+'-V', p+'-E'])
-        results[1].extend([sum([abs(cap[i]-subtopoW[i]) for i in range(len(cap))])/sum(cap), sum(cutW.values())/topoW])
+#        results[1].extend([sum([abs(cap[i]-subtopoW[i]) for i in range(len(cap))])/sum(cap), sum(cutW.values())/topoW])
+        results[1].extend([sum([subtopoW[i]-cap[i] for i in range(len(cap)) if cap[i] < subtopoW[i]])/sum(cap), sum(cutW.values())/topoW])
 #        print p, sum([abs(cap[i]-subtopoW[i]) for i in range(len(cap))])/sum(cap), sum(cutW.values())/topoW
     print ' '.join(results[0])
     print ' '.join(['%.6f' % x for x in results[1]])

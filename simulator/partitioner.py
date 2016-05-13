@@ -157,7 +157,10 @@ class MetisPartitioner(Partitioner):
         # Add nodes from the output file
         for line in f:
             part = int(line)
+            if part > n-1:
+                part = n-1
             self.nodeToPart[self.pos[i]] = part
+#            print 'part:', part, ',pos:', i, self.pos[i]
             self.partitions[part].addNode(self.pos[i], **self.topo.nodeInfo(self.pos[i]))
             i += 1
         f.close()
@@ -250,7 +253,7 @@ class ChacoUEPartitioner(MetisPartitioner):
         subprocess.call('echo "'+self.graph+'\n'+self.graph+'.out\n1\n50\n'+str(dim)+'\n'+caps+'\n2\nn\n" > '
             +inputPara, shell=True)
         subprocess.call('echo "'+self.chacoCtlPara+'" > User_Params', shell=True)
- 
+
         if n > 1 and len(self.switches) > 1:
             startT = time.time()
             outp = subprocess.check_output(["cat "+inputPara+" | "+self.toolCMD], shell=True)

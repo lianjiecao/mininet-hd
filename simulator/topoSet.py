@@ -176,8 +176,8 @@ class RocketFuel(Topo):
             # Add host to non-backbone switches
             if tokens[1] == 'nbb':
                 h_name = 'h' + sw_idx
-                self.addHost(h_name)
-                self.addLink(sw_name, h_name, bw=10, delay='1ms')
+#                self.addHost(h_name, ip='10.0.0.'+str(sw_idx), cpu=0.1)
+#                self.addLink(sw_name, h_name, bw=100, delay='1ms')
             if len(tokens) > 2:
                 # bb = backbone, nb = neighbor
                 sws[sw_name] = {'bb':tokens[1], 'nb':tokens[2:]}
@@ -191,9 +191,11 @@ class RocketFuel(Topo):
                 for n in sws[sw]['nb']:
                     if sorted([sw, sw_map[n]]) not in l and sw != sw_map[n]:
                         if sws[sw]['bb'] == 'bb' and sws[sw_map[n]]['bb'] == 'bb':
-                            self.addLink(sw, sw_map[n], bw=40, delay='1ms')
+                            self.addLink(sw, sw_map[n], bw=150, delay='1ms')
+#                            self.addLink(sw, sw_map[n], bw=40, delay='1ms')
                         else:
-                            self.addLink(sw, sw_map[n], bw=10, delay='1ms')
+                            self.addLink(sw, sw_map[n], bw=150, delay='1ms')
+#                            self.addLink(sw, sw_map[n], bw=10, delay='1ms')
                         l.append(sorted([sw, sw_map[n]]))
 
 class TopoSet:

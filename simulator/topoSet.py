@@ -221,7 +221,9 @@ class TopoSet:
            624:'3356.r0.cch.abr',
            201:'3967.r0.cch.abr',
             11:'4755.r0.cch.abr',
-           631:'7018.r0.cch.abr'
+           631:'7018.r0.cch.abr',
+           100:'1755-100.r0.cch.abr',
+            36:'1755-36.r0.cch.abr',
         }
 
 

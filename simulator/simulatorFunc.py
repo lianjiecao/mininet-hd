@@ -1,10 +1,12 @@
 import sys, itertools, logging, time, math
+import numpy as np
+
 
 
 logging.basicConfig()
 
 logger = logging.getLogger("simuFunc")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 def adjustCap(topoW, caps):
 
@@ -19,6 +21,20 @@ def adjustCap(topoW, caps):
     else:
         return caps
 
+def adjustCapFs(topoW, capFs):
+
+    logger.debug("Original capacities: " + str(capFs))
+    ps = {x[0]:np.poly1d(x[1]) for x in capFs} # numpy ploy1d object for PMs
+    sumCaps = sum([ps[x](100) for x in ps])
+    if topoW > sumCaps:
+        logger.debug("Topology is too large! Experiment may lose fidelity!")
+        ratio = float(topoW)/sumCaps
+
+        newCapFs = [( x[0], x[1][:-1]+[x[1][-1]+ps[x[0]](100)*ratio-ps[x[0]](100)] ) for x in capFs]
+        logger.debug("Adjusted capacities: " + str(newCapFs))
+        return newCapFs
+    else:
+        return capFs
 
 # def initShare(origTopo, capacities):
 

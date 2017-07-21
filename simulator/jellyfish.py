@@ -2,6 +2,8 @@ import sys, random,re
 
 from ripl.dctopo import JellyFishTopo
 from mininet.topo import Topo
+from mininet.node import CPULimitedHost
+
 
 class JellyFish(Topo):
     def randByte(self):
@@ -16,7 +18,7 @@ class JellyFish(Topo):
         return "0" * ( 12 - len(dp)) + dp
     
     # args is a string defining the arguments of the topology! has be to format: "x,y,z" to have x hosts and a bw limit of y for those hosts each and a latency of z (in ms) per hop
-    def __init__(self, hosts=2, sw=10, k=3, bwlimit=10, lat=0.1, **opts):
+    def __init__(self, hosts=2, sw=10, k=5, bwlimit=10, lat=0.1, **opts):
         Topo.__init__(self, **opts)
         t = JellyFishTopo(0, sw, hosts, k)
         numLeafes = hosts
@@ -26,7 +28,7 @@ class JellyFish(Topo):
         i = 1
         for ht in t.hosts():
             hName = ht[0] + str(int(ht[1:]) + 1)
-            h = self.addHost(hName, mac=self.makeMAC(i), ip="10.0.0." + str(i))
+            h = self.addHost(hName, mac=self.makeMAC(i), ip="10.0.0." + str(i), cls=CPULimitedHost, cpu=0.05)
             i += 1
 #            h = self.addHost('h' + str(i), mac=self.makeMAC(i), ip="10.0.0." + str(i))
             

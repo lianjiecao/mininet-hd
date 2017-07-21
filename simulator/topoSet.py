@@ -91,11 +91,12 @@ class ThreeTierTopo(Topo):
 
 class ClosTopo(Topo):
 
-    def __init__(self, nPod, nCorePlane=2):
+    def __init__(self, nPod, bw=10, nCorePlane=2):
         super(ClosTopo, self).__init__()
+        self.bw = bw
         self.nAggSw = nCorePlane
         self.nEdgSw = 4
-        self.nHost = 2*self.nEdgSw
+        self.nHost = 1 # 2*self.nEdgSw
         self.nCorePlane = nCorePlane
         self.nPod = nPod
         self.coreSw = []
@@ -127,18 +128,19 @@ class ClosTopo(Topo):
                 self.addSwitch(edgId, **opt)
                 # Connect aggregation swiches and edge swiches in the same pod
                 for agg in tmpAgg:
-                    self.addLink(edgId, agg)
+                    self.addLink(edgId, agg, bw=self.bw, delay='1ms')
                 for h in range(self.nHost):
                     hostId = '%d_%d_%d' % (3, p, h)
                     opt = self.genNodeOpt(3, p, h)
+                    opt.update({'cls':'CPULimitedHost', 'cpu':0.05})
                     self.addHost(hostId, **opt)
-                    self.addLink(edgId, hostId)
+                    self.addLink(edgId, hostId, bw=self.bw, delay='1ms')
 
 
         for csw in self.coreSw:
             for asw in self.aggSw:
                 if csw.split('_')[1] == asw.split('_')[2]:
-                    self.addLink(csw, asw)
+                    self.addLink(csw, asw, bw=self.bw, delay='1ms')
 
 
     def genNodeOpt(self, layer, sw, hs):
@@ -157,9 +159,9 @@ class ClosTopo(Topo):
         return opt
 
 class RocketFuel(Topo):
-    def __init__(self, file):
+    def __init__(self, file, bw=50):
         super(RocketFuel, self).__init__()
-
+        self.bw = bw
         cont = open(file, 'r').read()
         entries = cont.split('\n')[:-1]
         sws = {}
@@ -176,8 +178,8 @@ class RocketFuel(Topo):
             # Add host to non-backbone switches
             if tokens[1] == 'nbb':
                 h_name = 'h' + sw_idx
-#                self.addHost(h_name, ip='10.0.0.'+str(sw_idx), cpu=0.1)
-#                self.addLink(sw_name, h_name, bw=100, delay='1ms')
+                self.addHost(h_name, ip='10.0.0.'+str(sw_idx), cpu=0.10)
+                self.addLink(sw_name, h_name, bw=self.bw, delay='1ms')
             if len(tokens) > 2:
                 # bb = backbone, nb = neighbor
                 sws[sw_name] = {'bb':tokens[1], 'nb':tokens[2:]}
@@ -191,27 +193,28 @@ class RocketFuel(Topo):
                 for n in sws[sw]['nb']:
                     if sorted([sw, sw_map[n]]) not in l and sw != sw_map[n]:
                         if sws[sw]['bb'] == 'bb' and sws[sw_map[n]]['bb'] == 'bb':
-                            self.addLink(sw, sw_map[n], bw=150, delay='1ms')
+                            self.addLink(sw, sw_map[n], bw=self.bw, delay='1ms')
 #                            self.addLink(sw, sw_map[n], bw=40, delay='1ms')
                         else:
-                            self.addLink(sw, sw_map[n], bw=150, delay='1ms')
+                            self.addLink(sw, sw_map[n], bw=self.bw, delay='1ms')
 #                            self.addLink(sw, sw_map[n], bw=10, delay='1ms')
                         l.append(sorted([sw, sw_map[n]]))
 
 class TopoSet:
-    def __init__(self, nSw, typeTopo='all', nTopo=1):
+    def __init__(self, nSw, typeTopo='all', nTopo=1, bw=10):
         
         self.type = typeTopo.lower()
         self.num = nTopo
         self.nSw = nSw
+        self.bw = bw
         if self.type == 'all':
-            self.topos = {'fattree':[], 'jellyfish':[], 'clos':[], 'rocketfuel':[]}
+            # self.topos = {'fattree':[], 'jellyfish':[], 'clos':[], 'rocketfuel':[]}
+            self.topos = {'fattree':[], 'jellyfish':[], 'rocketfuel':[]}
         else:
             self.topos = {self.type:[]}
         # self.nHost = 64
         # self.nSw = 5*self.nPod**2/4
         # self.k = 4
-        self.bw = 10
         self.rfTopos = {
            318:'1221.r0.cch.abr',
            604:'1239.r0.cch.abr',
@@ -222,8 +225,8 @@ class TopoSet:
            201:'3967.r0.cch.abr',
             11:'4755.r0.cch.abr',
            631:'7018.r0.cch.abr',
-           100:'1755-100.r0.cch.abr',
-            36:'1755-36.r0.cch.abr',
+            36:'36-1755.r0.cch.abr',
+            41:'41-1755.r0.cch.abr',
         }
 
 
@@ -235,17 +238,19 @@ class TopoSet:
             #     for link in t.links():
             #         t.setlinkInfo(link[0], link[1], {"bw":self.bw, "delay":"1"})
             #     self.topos['threetier'].append(t)
-            if self.type == 'clos' or self.type == 'all':
-                t = ClosTopo(int(round(self.nSw/8)))
-                for link in t.links():
-                    t.setlinkInfo(link[0], link[1], {"bw":self.bw, "delay":"1"})
+            if self.type == 'clos': # or self.type == 'all':
+                t = ClosTopo(int(round(self.nSw/8)), bw=self.bw)
+#                for link in t.links():
+#                    t.setlinkInfo(link[0], link[1], {"bw":self.bw, "delay":"1"})
                 self.topos['clos'].append(t)
 
             k = int(round((0.8*self.nSw)**0.5))
             if self.type == 'fattree' or self.type == 'all':
-                t = FatTreeTopo(k)
-                for link in t.links():
-                    t.setlinkInfo(link[0], link[1], {"bw":self.bw, "delay":"1"})
+                t = FatTreeTopo(k, self.bw)
+#                for link in t.links():
+#                    t.setlinkInfo(link[0], link[1], {"bw":self.bw})
+#                    t.setlinkInfo(link[0], link[1], self.bw, 'bw')
+#                    print t.linkInfo(link[0], link[1], 'bw')
                 self.topos['fattree'].append(t)
                 self.nHost = int(len(t.switches())/1.2)
                 # self.k = len(t.links())/len(t.switches())+1
@@ -255,7 +260,8 @@ class TopoSet:
             #     self.topos.append(binaryTree(self.nHost, self.bw, 0.1))
             
             if self.type == 'jellyfish' or self.type == 'all':
-                self.topos['jellyfish'].append(JellyFish(self.nHost, self.nSw, int(0.2*self.nSw), self.bw*2, lat=0.1))
+                self.nHost = int(self.nSw * 0.5)
+                self.topos['jellyfish'].append(JellyFish(hosts=self.nHost, sw=self.nSw, k=int(0.5*self.nSw), bwlimit=self.bw, lat=0.1))
                 # JellyFish(nHost, nSw, k, bw, lat=0.1)
             # if self.type == 'treenet' or self.type == 'all':
             #     t = TreeTopo(3, 2)
@@ -263,8 +269,8 @@ class TopoSet:
             #         t.setlinkInfo(link[0], link[1], {"bw":self.bw, "delay":"1"})
             #     self.topos.append(t)
             if self.type == 'rocketfuel' or self.type == 'all':
-                rfFile = '../rocketfuel/sigcomm02/' + self.selectRF(self.nSw)
-                self.topos['rocketfuel'].append(RocketFuel(rfFile))
+                rfFile = '/home/cao/mininet-hd/rocketfuel/sigcomm02/' + self.selectRF(self.nSw)
+                self.topos['rocketfuel'].append(RocketFuel(rfFile, self.bw))
 
 
     def selectRF(self, n):
